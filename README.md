@@ -1,0 +1,2 @@
+# plaques
+Minimalistic TUI library
