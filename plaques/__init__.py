@@ -7,3 +7,8 @@ try:
     install(show_locals = True)
 except ImportError:
     logging.info("rich.traceback is not available")
+
+from .version import __version__
+VERSION = __version__
+
+from .elements import CharCell, render

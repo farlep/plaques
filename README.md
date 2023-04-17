@@ -8,3 +8,4 @@ Minimalistic TUI library
 * [pyenv](https://github.com/pyenv/pyenv)
 * [wcwidth](https://github.com/jquast/wcwidth)
 * Logging
+* Magic methods
