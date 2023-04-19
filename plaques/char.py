@@ -74,7 +74,7 @@ class CharCell():
                     raise TypeError(_msg)
                 object.__setattr__(self, name, value)
 
-    def __eq__(self, other: "CharCell") -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare 2 CharCells using `==`.
 
         This compares how CharCells look _visually_, so None is equal
@@ -82,6 +82,8 @@ class CharCell():
         and italic attributes are not compared since they are not visible
         on a space.
         """
+        if not isinstance(other, CharCell):
+            return NotImplemented
         _chars_are_spaces = False
         if self.bgcol != other.bgcol or self.ulined != other.ulined:
             return False
@@ -92,11 +94,13 @@ class CharCell():
             return False
         return True
 
-    def __ne__(self, other: "CharCell") -> bool:
+    def __ne__(self, other: object) -> bool:
         """Compare 2 CharCells using `!=`.
 
         Refer to __eq__() for details on the logic.
         """
+        if not isinstance(other, CharCell):
+            return NotImplemented
         return not self == other
 
     def copy(self) -> "CharCell":
@@ -142,10 +146,100 @@ class CharCell():
             return ""          #return an empty string
         return _escseq[:-1] + "m" #replace the trailing semicolon with SGR `m`
 
+    def overlay(self, other: "CharCell") -> "CharCell":
+        """Overlay `other` CharCell on this one and return a new CharCell.
 
-def render(chrlist: list[CharCell]) -> str:
-    """Turn a list of CharCells into a printable string.
+        The new CharCell will have the attributes of `other`. If any of them
+        is None, the attribute of `self` will be used.
+        """
+        return CharCell(
+            char = other.char if other.char else self.char,
+            color = other.color if other.color else self.color,
+            bgcol = other.bgcol if other.bgcol else self.bgcol,
+            bold = other.bold if other.bold else self.bold,
+            ulined = other.ulined if other.ulined else self.ulined,
+            italic = other.italic if other.italic else self.italic,
+            )
 
-    Uses ANSI SGR codes in between characters where necessary.
+
+class CharTable():
+    """Representation of a 2-dimensional grid of CharCells.
+
+    Attributes:
+    __table: actual table containing CharCell objects.
     """
-    pass
+
+    def __init__(self, *,
+        fill: CharCell = CharCell(),
+        h: int = 1,
+        v: int = 1,
+        ) -> None:
+        """Initialize __table and fill it with copies of a given CharCell.
+
+        `v` and `h` are vertical and horizontal dimensions of the CharTable.
+        By default, `fill` is a CharCell with None for every attribute.
+        """
+        if type(fill) != CharCell or type(h) != int or type(v) != int:
+            _msg = "Incorrect type for `fill`, `h` or `v` arguments."
+            raise TypeError(_msg)
+        self.__table: list[list[CharCell]] = \
+            [[fill.copy() for _x in range(h)] for _y in range(v)]
+
+    def getsize(self) -> tuple[int, int]:
+        """Get horizontal and vertical size of the table."""
+        return len(self.__table[0]), len(self.__table)
+
+    def setcell(self, cell: CharCell, h: int, v: int) -> None:
+        """Put a CharCell at a specified position on the grid."""
+        self.__table[v][h] = cell.copy()
+
+    def getcell(self, h: int, v: int) -> CharCell:
+        """Get a copy of a CharCell at a specified position."""
+        return self.__table[v][h].copy()
+
+    def copy(self) -> "CharTable":
+        """Return an identical CharTable."""
+        result = CharTable()
+        result.loadtable(table = self.__table)
+        return result
+
+    def loadtable(self, *,
+        char:
+        table: list[list[CharCell]] | None: None,
+        ) -> None:
+        """Write data
+
+        Useful for loading raw ASCII art and other assets.
+        XXX
+        `table` is a 2-dimensional array of CharCells. This argument overrides
+        all previous ones. The dimensions of __table will be changed if the
+        array doesn't have the same dimensions.
+        """
+        if table:
+            self.__table = table
+            return
+        #XXX
+
+    def overlay(self, other: "CharTable") -> None:
+        """Overlay another CharTable on this one.
+
+        This method uses rules of CharCell.overlay() method, so if a CharCell
+        from `other` has None for some of its attributes, the new cell will
+        inherit these attributes from the original CharCell.
+        """
+
+    def render(self) -> list[str]:
+        """Return an printable version of CharTable as a list of strings.
+
+        The string are formatted using ansi_transition method of CharCell
+        class.
+        """
+
+    def delta(self, other: "CharTable") -> dict[tuple[int, int], str]:
+        """Calculate a diffence between 2 CharTables.
+
+        This method accepts another CharTable of equal size and checks that
+        every CharCell of `other` is the same as the CharCell of this one
+        at the same position on the grid. When it finds ... XXX
+        What needs to be printed ...XXX
+        """

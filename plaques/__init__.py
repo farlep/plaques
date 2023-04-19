@@ -11,4 +11,4 @@ except ImportError:
 from .version import __version__
 VERSION = __version__
 
-from .elements import CharCell, render
+from .char import CharCell, CharTable
