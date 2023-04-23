@@ -84,7 +84,6 @@ class CharCell():
         """
         if not isinstance(other, CharCell):
             return NotImplemented
-        _chars_are_spaces = False
         if self.bgcol != other.bgcol or self.ulined != other.ulined:
             return False
         if self.char in [" ", None] and other.char in [" ", None]:
@@ -102,6 +101,14 @@ class CharCell():
         if not isinstance(other, CharCell):
             return NotImplemented
         return not self == other
+
+    def __repr__(self) -> str:
+        """Show attributes."""
+        return (
+            f"<CharCell: char:{self.char}, color:{self.color}, "
+            f"bgcol:{self.bgcol}, bold:{self.bold}, underlined:{self.ulined},"
+            f" italic:{self.italic}>"
+        )
 
     def copy(self) -> "CharCell":
         """Return an identical CharCell."""
@@ -153,12 +160,12 @@ class CharCell():
         is None, the attribute of `self` will be used.
         """
         return CharCell(
-            char = other.char if other.char else self.char,
-            color = other.color if other.color else self.color,
-            bgcol = other.bgcol if other.bgcol else self.bgcol,
-            bold = other.bold if other.bold else self.bold,
-            ulined = other.ulined if other.ulined else self.ulined,
-            italic = other.italic if other.italic else self.italic,
+            char = other.char if other.char is not None else self.char,
+            color = other.color if other.color is not None else self.color,
+            bgcol = other.bgcol if other.bgcol is not None else self.bgcol,
+            bold = other.bold if other.bold is not None else self.bold,
+            ulined = other.ulined if other.ulined is not None else self.ulined,
+            italic = other.italic if other.italic is not None else self.italic,
             )
 
 
@@ -169,8 +176,10 @@ class CharTable():
     __table: actual table containing CharCell objects.
     """
 
+    NONECHARCELL = CharCell() #CharCell without attributes for method defaults
+
     def __init__(self, *,
-        fill: CharCell = CharCell(),
+        fill: CharCell = NONECHARCELL,
         h: int = 1,
         v: int = 1,
         ) -> None:
@@ -204,8 +213,8 @@ class CharTable():
         return result
 
     def loadtable(self, *,
-        char:
-        table: list[list[CharCell]] | None: None,
+        char: list[str], # TODO: other fields
+        table: list[list[CharCell]] | None = None,
         ) -> None:
         """Write data
 
