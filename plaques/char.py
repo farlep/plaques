@@ -5,6 +5,8 @@ from wcwidth import wcswidth
 
 
 class Color(Enum):
+    """Basic colors for CharCell."""
+
     BLACK = 0
     RED = 1
     GREEN = 2
@@ -38,12 +40,10 @@ class CharCell():
     }
 
     def __init__(self, **kwargs) -> None:
-        """Receive optional arguments."""
-        for _key, _default in self.DEFAULTS.items():
-            if _key in kwargs.keys():
-                self.__setattr__(_key, kwargs[_key])
-            else:
-                self.__setattr__(_key, _default)
+        """Set provided attributes or the default ones."""
+        kwargs = self.DEFAULTS | kwargs
+        for _key, _value in kwargs.items():
+            self.__setattr__(_key, _value)
 
     def __setattr__(self, name: str, value: bool | str | Color) -> None:
         """Validate attributes.
@@ -105,10 +105,9 @@ class CharCell():
             )
 
     def overlay(self, other: "CharCell") -> "CharCell":
-        """Overlay `other` CharCell on this one and return a new CharCell.
+        """Copy all the attributes of another CharCell, except colors.
 
-        The new CharCell will have the attributes of `other`. If any of the
-        colors is TRANSPARENT, the color of `self` will be used instead.
+        Colors will remain the same if they have the value of TRANSPARENT.
         """
         return CharCell(
             char = other.char,
@@ -120,72 +119,3 @@ class CharCell():
             ulined = other.ulined,
             italic = other.italic,
             )
-
-
-class CharTable():
-    """Representation of a 2-dimensional grid of CharCells.
-
-    Attributes:
-    __table: actual table containing CharCell objects.
-    """
-
-    NONECHARCELL = CharCell() #CharCell without attributes for method defaults
-
-    def __init__(self, *,
-        fill: CharCell = NONECHARCELL,
-        h: int = 1,
-        v: int = 1,
-        ) -> None:
-        """Initialize __table and fill it with copies of a given CharCell.
-
-        `v` and `h` are vertical and horizontal dimensions of the CharTable.
-        By default, `fill` is a CharCell with None for every attribute.
-        """
-        if type(fill) != CharCell or type(h) != int or type(v) != int:
-            _msg = "Incorrect type for `fill`, `h` or `v` arguments."
-            raise TypeError(_msg)
-        self.__table: list[list[CharCell]] = \
-            [[fill.copy() for _x in range(h)] for _y in range(v)]
-
-    def getsize(self) -> tuple[int, int]:
-        """Get horizontal and vertical size of the table."""
-        return len(self.__table[0]), len(self.__table)
-
-    def setcell(self, cell: CharCell, h: int, v: int) -> None:
-        """Put a CharCell at a specified position on the grid."""
-        self.__table[v][h] = cell.copy()
-
-    def getcell(self, h: int, v: int) -> CharCell:
-        """Get a copy of a CharCell at a specified position."""
-        return self.__table[v][h].copy()
-
-    def copy(self) -> "CharTable":
-        """Return an identical CharTable."""
-        result = CharTable()
-        result.loadtable(table = self.__table)
-        return result
-
-    def loadtable(self, *,
-        char: list[str], # TODO: other fields
-        table: list[list[CharCell]] | None = None,
-        ) -> None:
-        """Write data
-
-        Useful for loading raw ASCII art and other assets.
-        XXX
-        `table` is a 2-dimensional array of CharCells. This argument overrides
-        all previous ones. The dimensions of __table will be changed if the
-        array doesn't have the same dimensions.
-        """
-        if table:
-            self.__table = table
-            return
-        #XXX
-
-    def overlay(self, other: "CharTable") -> None:
-        """Overlay another CharTable on this one.
-
-        This method uses rules of CharCell.overlay() method, so if a CharCell
-        from `other` has None for some of its attributes, the new cell will
-        inherit these attributes from the original CharCell.
-        """
