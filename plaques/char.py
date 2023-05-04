@@ -1,93 +1,76 @@
 """Basic classes for plaques."""
-import logging
+
+from enum import Enum
 from wcwidth import wcswidth
+
+
+class Color(Enum):
+    BLACK = 0
+    RED = 1
+    GREEN = 2
+    YELLOW = 3
+    BLUE = 4
+    MAGENTA = 5
+    CYAN = 6
+    WHITE = 7
+    TRANSPARENT = 8
+    NORMAL = 9
+
+globals().update(Color.__members__)
+
 
 class CharCell():
     """Representation of a single character-cell in terminal.
 
     Attributes:
-    char: a character to be printed (space if not specified);
-    color, bgcol: character and background colors if specified;
-    bold, u[nder]lined, italic: styles if specified.
+    char: a character to be printed;
+    color, bgcol: character and background colors (Color enum);
+    bold, u[nder]lined, italic: styles.
     """
 
-    COLORNUM = { #Correct color names for `color` and `bgcol` attributes
-        "k": "0", #blacK
-        "r": "1", #Red
-        "g": "2", #Green
-        "y": "3", #Yellow
-        "b": "4", #Blue
-        "m": "5", #Magenta
-        "c": "6", #Cyan
-        "w": "7", #White
-        "n": "9", #Normal
-        None: None,
-        } #numbers correspond to ANSI SGR codes to use in ansi_transition()
+    DEFAULTS = {
+        "char": " ",
+        "color": NORMAL,
+        "bgcol": NORMAL,
+        "bold": False,
+        "ulined": False,
+        "italic": False,
+    }
 
-    def __init__(self, *,
-            char: str | None = None,
-            color: str | None = None,
-            bgcol: str | None = None,
-            bold: bool | None = None,
-            ulined: bool | None = None,
-            italic: bool | None = None,
-            ) -> None:
+    def __init__(self, **kwargs) -> None:
         """Receive optional arguments."""
-        self.char, self.color, self.bgcol, self.bold, self.ulined, \
-            self.italic = char, color, bgcol, bold, ulined, italic
-        msg = "Charcell made: " + str(char)
-        logging.debug(msg)
+        for _key, _default in self.DEFAULTS.items():
+            if _key in kwargs.keys():
+                self.__setattr__(_key, kwargs[_key])
+            else:
+                self.__setattr__(_key, _default)
 
-    def __setattr__(self, name: str, value: str | bool | None) -> None:
+    def __setattr__(self, name: str, value: bool | str | Color) -> None:
         """Validate attributes.
 
-        Assign `value` to attribute `name` if validation is successful.
-        Raise TypeError if value is not of the correct type or None.
-        Raise ValueError if character is not 1 cell-wide
-        or color name is wrong.
+        Raise ValueError if character is not 1 cell-wide.
         """
-        match name:
-            case "char":
-                if type(value) != str and value is not None:
-                    _msg = "Incorrect type for character"
-                    raise TypeError(_msg)
-                if value is None:
-                    object.__setattr__(self, name, value)
-                    return
-                if wcswidth(value) == 1:
-                    object.__setattr__(self, name, value)
-                else:
-                    _msg = "CharCell.char must have printable length of 1"
-                    raise ValueError(_msg)
-            case "color" | "bgcol":
-                if type(value) != str and value is not None:
-                    _msg = "Incorrect type for color"
-                    raise TypeError(_msg)
-                if value in self.COLORNUM:
-                    object.__setattr__(self, name, value)
-                else:
-                    _msg = "Incorrect color name"
-                    raise ValueError(_msg)
-            case "bold" | "ulined" | "italic":
-                if type(value) != bool and value is not None:
-                    _msg = "Incorrect type for style"
-                    raise TypeError(_msg)
+        if name == "char":
+            if wcswidth(value) == 1:
                 object.__setattr__(self, name, value)
+            else:
+                _msg = "CharCell.char must have printable length of 1"
+                raise ValueError(_msg)
+        elif name in ["color", "bgcol", "bold", "ulined", "italic"]:
+            object.__setattr__(self, name, value)
 
     def __eq__(self, other: object) -> bool:
         """Compare 2 CharCells using `==`.
 
-        This compares how CharCells look _visually_, so None is equal
-        to space for char attribute. Also if char is None or space, bold
-        and italic attributes are not compared since they are not visible
-        on a space.
+        This compares how CharCells look _visually_, so if char is space, bold
+        and italic attributes are not compared since they are not visible.
         """
         if not isinstance(other, CharCell):
             return NotImplemented
         if self.bgcol != other.bgcol or self.ulined != other.ulined:
             return False
-        if self.char in [" ", None] and other.char in [" ", None]:
-            return True #characters are spaces
+        if self.char == " " and other.char == " ":
+            return True #characters are spaces, no need to check further
         if self.char != other.char or self.bold != other.bold or self.ulined \
             != other.ulined or self.color != other.color:
             return False
@@ -121,51 +104,21 @@ class CharCell():
             italic = self.italic,
             )
 
-    def ansi_transition(self, other: "CharCell") -> str:
-        """Change style and color between `self` and `other`.
-
-        Return a sequence of ANSI SGR escape codes necessary to transition
-        from the colors and styles of CharCell `self` to the colors and
-        styles of CharCell `other`. The codes are to be printed in between
-        the characters form char attributes of the CharCells.
-
-        If the CharCell colors and styles are the same, an empty string is
-        returned.
-
-        See en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
-        for details.
-        """
-        _escseq = "\033["
-        if self.color != other.color:
-            _colorcode = other.color if other.color else "n"
-            #return to normal color if the next char's color is unspecified
-            _escseq = _escseq + "3" + str(self.COLORNUM[_colorcode]) + ";"
-        if self.bgcol != other.bgcol:
-            _bgcolcode = other.bgcol if other.bgcol else "n" #see above
-            _escseq = _escseq + "4" + str(self.COLORNUM[_bgcolcode]) + ";"
-        if self.bold != other.bold:
-            _escseq = _escseq + "1;" if other.bold else _escseq + "21;"
-        if self.ulined != other.ulined:
-            _escseq = _escseq + "4;" if other.bold else _escseq + "24;"
-        if self.italic != other.italic:
-            _escseq = _escseq + "3;" if other.bold else _escseq + "23;"
-        if _escseq == "\033[": #if no colors and styles were changed,
-            return ""          #return an empty string
-        return _escseq[:-1] + "m" #replace the trailing semicolon with SGR `m`
-
     def overlay(self, other: "CharCell") -> "CharCell":
         """Overlay `other` CharCell on this one and return a new CharCell.
 
-        The new CharCell will have the attributes of `other`. If any of them
-        is None, the attribute of `self` will be used.
+        The new CharCell will have the attributes of `other`. If any of the
+        colors is TRANSPARENT, the color of `self` will be used instead.
         """
         return CharCell(
-            char = other.char if other.char is not None else self.char,
-            color = other.color if other.color is not None else self.color,
-            bgcol = other.bgcol if other.bgcol is not None else self.bgcol,
-            bold = other.bold if other.bold is not None else self.bold,
-            ulined = other.ulined if other.ulined is not None else self.ulined,
-            italic = other.italic if other.italic is not None else self.italic,
+            char = other.char,
+            color = (other.color if other.color is not TRANSPARENT
+                else self.color),
+            bgcol = (other.bgcol if other.bgcol is not TRANSPARENT
+                else self.bgcol),
+            bold = other.bold,
+            ulined = other.ulined,
+            italic = other.italic,
             )
 
 
@@ -235,20 +188,4 @@ class CharTable():
         This method uses rules of CharCell.overlay() method, so if a CharCell
         from `other` has None for some of its attributes, the new cell will
         inherit these attributes from the original CharCell.
-        """
-
-    def render(self) -> list[str]:
-        """Return an printable version of CharTable as a list of strings.
-
-        The string are formatted using ansi_transition method of CharCell
-        class.
-        """
-
-    def delta(self, other: "CharTable") -> dict[tuple[int, int], str]:
-        """Calculate a diffence between 2 CharTables.
-
-        This method accepts another CharTable of equal size and checks that
-        every CharCell of `other` is the same as the CharCell of this one
-        at the same position on the grid. When it finds ... XXX
-        What needs to be printed ...XXX
         """
