@@ -1,7 +1,8 @@
-"""Plaques is a minimalistic TUI library."""
+"""Plaques is a minimalistic TUI (Text User Interface) library."""
 
 from .version import __version__
 VERSION = __version__
 
-from .char import Color, CharCell
+from .base import Color, Pivot, CharCell, Plaque
 globals().update(Color.__members__)
+globals().update(Pivot.__members__)
