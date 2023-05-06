@@ -197,6 +197,7 @@ class Plaque:
         "h_resize_to_fit": True,
         "v_resize_to_fit": True,
         "fill": None,
+        "visible": True,
     }
 
     BORDER_SIZE = {
@@ -226,7 +227,7 @@ class Plaque:
         """
         h_real_pos, h_real_size, trim_left, trim_right = self.__calc(
             h_avail,
-            self.pivot,
+            self.pivot, #XXX
             self.h_move_to_fit,
             self.h_resize_to_fit,
             self.h_rel_size,
@@ -236,7 +237,7 @@ class Plaque:
             )
         v_real_pos, v_real_size, trim_top, trim_bottom = self.__calc(
             v_avail,
-            self.pivot,
+            self.pivot, #XXX
             self.v_move_to_fit,
             self.v_resize_to_fit,
             self.v_rel_size,
@@ -246,12 +247,13 @@ class Plaque:
             )
         char_table = self.__get_char_table(h_real_size, v_real_size)
         for _element in self.content:
-            elem_char_table, elem_h_pos, elem_v_pos = _element.render(
-                h_real_size - BORDER_SIZE["left"] - BORDER_SIZE["right"],
-                v_real_size - BORDER_SIZE["top"] - BORDER_SIZE["bottom"],
-                )
-            self.__overlay_tables(char_table, elem_char_table,
-                elem_h_pos, elem_v_pos)
+            if _element.visible:
+                elem_char_table, elem_h_pos, elem_v_pos = _element.render(
+                    h_real_size - BORDER_SIZE["left"] - BORDER_SIZE["right"],
+                    v_real_size - BORDER_SIZE["top"] - BORDER_SIZE["bottom"],
+                    )
+                self.__overlay_tables(char_table, elem_char_table,
+                    elem_h_pos, elem_v_pos)
         # TODO: trim the table
         return char_table, h_real_pos, v_real_pos
 
