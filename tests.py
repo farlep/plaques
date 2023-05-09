@@ -1,10 +1,12 @@
-import plaques
+#!/usr/bin/env python3
 
-a = plaques.CharCell(bgcol = "r", ulined = True, italic = True)
-b = plaques.CharCell(char = "B", italic = True, color = "g")
-c = plaques.CharCell(char = "c", bold = True, italic = False)
-print(a)
-print(b)
-print(c)
-print(a.overlay(b))
-print(a.overlay(c))
+import json
+import plaques as plq
+
+mpbase = plq.Plaque(h_abs_size = 20, v_abs_size = 7, fill = plq.CharCell(bgcol = plq.RED, ulined = True))
+mpchild = plq.Plaque(h_rel_size = 0.4, v_rel_size = 0.6, h_rel_pos = 0.5, v_rel_pos = 0.5,
+    fill = plq.CharCell(bgcol = plq.BLUE, char = "a")
+    )
+#print(json.dumps(mpbase.render(30,30), indent = 4, default = repr))
+mpbase.content.append(mpchild)
+print(json.dumps(mpbase.render(30,30), indent = 4, default = repr))

@@ -144,6 +144,7 @@ class Pivot(Enum):
     CENTER_LEFT = 8
 
     def h_shift(self) -> float:
+        """Tell what fraction of size should top-left corner be moved."""
         if self.value in [1, 8, 7]:
             return 0
         if self.value in [2, 0, 6]:
@@ -151,6 +152,7 @@ class Pivot(Enum):
         return 1
 
     def v_shift(self) -> int:
+        """Tell what fraction of size should top-left corner be moved."""
         if self.value in [1, 2, 3]:
             return 0
         if self.value in [8, 0, 4]:
@@ -201,8 +203,8 @@ class Plaque:
         "h_abs_pos": 0,
         "v_rel_pos": 0.0,
         "h_rel_pos": 0.0,
-        "v_abs_size": 1,
-        "h_abs_size": 1,
+        "v_abs_size": 0,
+        "h_abs_size": 0,
         "v_rel_size": 0.0,
         "h_rel_size": 0.0,
         "pivot": CENTER_CENTER,
@@ -214,7 +216,7 @@ class Plaque:
         "visible": True,
     }
 
-    BORDER_SIZE = {
+    BORDER = {
         "top": 0,
         "right": 0,
         "bottom": 0,
@@ -226,18 +228,21 @@ class Plaque:
         kwargs = self.DEFAULTS | kwargs
         for _key, _value in kwargs.items():
             self.__setattr__(_key, _value)
-        self.content = []
+        object.__setattr__(self, "content", [])
 
-    def __setattr__(self, name: str, value: bool | str | Color) -> None:
-        """Validate attributes.
-
-        """
+    def __setattr__(self, name: str, value) -> None:
+        """Validate attributes."""
+        if name == "fill" and value is None:
+            object.__setattr__(self, "fill", CharCell())
+            return
+        object.__setattr__(self, name, value)
 
     def render(self, h_avail: int, v_avail: int) -> \
-        tuple[list[list[CharCell]], int, int]:
-        """TODO description.
+        tuple[list[list[CharCell]] | None, int, int]:
+        """Get a table of CharCells.
 
-        Returns ...
+        Returns 2-dimensional list of CharCells along with horizontal and
+        vertical position.
         """
         h_exact_pos, h_exact_size, trim_left, trim_right = self.__calc(
             h_avail,
@@ -259,17 +264,33 @@ class Plaque:
             self.v_rel_pos,
             self.v_abs_pos,
             )
+        if (trim_left >= h_exact_size or trim_right >= h_exact_size
+            or trim_top >= v_exact_size or trim_bottom >= v_exact_size
+            or h_exact_size <= 0 or v_exact_size <= 0):
+            return None, 0, 0 # out of bounds or zero size
         char_table = self.__get_char_table(h_exact_size, v_exact_size)
         for _element in self.content:
             if _element.visible:
                 elem_char_table, elem_h_pos, elem_v_pos = _element.render(
-                    h_exact_size - BORDER_SIZE["left"] - BORDER_SIZE["right"],
-                    v_exact_size - BORDER_SIZE["top"] - BORDER_SIZE["bottom"],
+                    h_exact_size - self.BORDER["left"] - self.BORDER["right"],
+                    v_exact_size - self.BORDER["top"] - self.BORDER["bottom"],
                     )
-                self.__overlay_tables(char_table, elem_char_table,
-                    elem_h_pos, elem_v_pos)
-        # TODO: trim the table
+                if elem_char_table is not None:
+                    self.__overlay_tables(char_table, elem_char_table,
+                        elem_h_pos + self.BORDER["left"],
+                        elem_v_pos + self.BORDER["top"]
+                        )
+        char_table = [_[trim_left:len(_) - trim_right] for _ in
+            char_table[trim_top:len(char_table) - trim_bottom]]
         return char_table, h_exact_pos, v_exact_pos
+
+    def __get_char_table(self, h_size: int, v_size: int
+        ) -> list[list[CharCell]]:
+        """Get empty canvas of right size."""
+        return [
+            [self.fill.copy() for _i in range(h_size)]
+            for _j in range(v_size)
+            ]
 
     @staticmethod
     def __calc(
@@ -282,13 +303,37 @@ class Plaque:
         rel_pos: float,
         abs_pos: int,
         ) -> tuple[int, int, int, int]:
-        """Calculate ...
+        """Calculate exact size and position in one dimension.
 
-        Returns ...
+        Returns real position, size and trim values.
         """
         exact_size = rel_size * avail + abs_size
-        exact_pos = int(rel_pos * avail + abs_pos - shift * exact_size)
-        exact_size = int(exact_size)
+        if exact_size <= 0:
+            return 0, 0, 0, 0
+        exact_pos = round(rel_pos * avail + abs_pos - shift * exact_size)
+        exact_size = round(exact_size)
+        trim_start = trim_end = 0
+        if (_ := exact_pos + exact_size - avail) > 0:
+            # plaque doesnt fit on the right or at the bottom
+            if move_to_fit:
+                exact_pos -= _
+            else:
+                trim_end += _
+        if (_ := -exact_pos) > 0:
+            # plaque doesnt fit on the left or at the top
+            if move_to_fit:
+                exact_pos += _
+                if (_ := exact_pos + exact_size - avail) > 0:
+                    if resize_to_fit:
+                        exact_size -= _
+                    else:
+                        trim_end += _
+            else:
+                trim_start += _
+        if resize_to_fit:
+            exact_size -= (trim_start + trim_end)
+            trim_start = trim_end = 0
+        return exact_pos, exact_size, trim_start, trim_end
 
     @staticmethod
     def __overlay_tables(
@@ -301,3 +346,9 @@ class Plaque:
 
         For every CharCell, its `overlay()` method is used.
         """
+        h_size = len(table2[0])
+        v_size = len(table2)
+        for _r1, _r2 in zip(table1[v_pos:v_pos + v_size], table2):
+            _r1[h_pos:h_pos + h_size] = [_c1.overlay(_c2)
+                for _c1, _c2 in zip(_r1[h_pos:h_pos + h_size], _r2)
+                ]
