@@ -121,7 +121,7 @@ class CharCell:
             )
 
 
-Class Pivot(Enum):
+class Pivot(Enum):
     """Defines several useful points on a Plaque (clockwise).
 
     1---2---3
@@ -142,6 +142,20 @@ Class Pivot(Enum):
     BOTTOM_CENTER = 6
     BOTTOM_LEFT = 7
     CENTER_LEFT = 8
+
+    def h_shift(self) -> float:
+        if self.value in [1, 8, 7]:
+            return 0
+        if self.value in [2, 0, 6]:
+            return 0.5
+        return 1
+
+    def v_shift(self) -> int:
+        if self.value in [1, 2, 3]:
+            return 0
+        if self.value in [8, 0, 4]:
+            return 0.5
+        return 1
 
 globals().update(Pivot.__members__)
 
@@ -220,14 +234,14 @@ class Plaque:
         """
 
     def render(self, h_avail: int, v_avail: int) -> \
-        list[list[CharCell]], int, int:
+        tuple[list[list[CharCell]], int, int]:
         """TODO description.
 
         Returns ...
         """
-        h_real_pos, h_real_size, trim_left, trim_right = self.__calc(
+        h_exact_pos, h_exact_size, trim_left, trim_right = self.__calc(
             h_avail,
-            self.pivot, #XXX
+            self.pivot.h_shift(),
             self.h_move_to_fit,
             self.h_resize_to_fit,
             self.h_rel_size,
@@ -235,9 +249,9 @@ class Plaque:
             self.h_rel_pos,
             self.h_abs_pos,
             )
-        v_real_pos, v_real_size, trim_top, trim_bottom = self.__calc(
+        v_exact_pos, v_exact_size, trim_top, trim_bottom = self.__calc(
             v_avail,
-            self.pivot, #XXX
+            self.pivot.v_shift(),
             self.v_move_to_fit,
             self.v_resize_to_fit,
             self.v_rel_size,
@@ -245,41 +259,44 @@ class Plaque:
             self.v_rel_pos,
             self.v_abs_pos,
             )
-        char_table = self.__get_char_table(h_real_size, v_real_size)
+        char_table = self.__get_char_table(h_exact_size, v_exact_size)
         for _element in self.content:
             if _element.visible:
                 elem_char_table, elem_h_pos, elem_v_pos = _element.render(
-                    h_real_size - BORDER_SIZE["left"] - BORDER_SIZE["right"],
-                    v_real_size - BORDER_SIZE["top"] - BORDER_SIZE["bottom"],
+                    h_exact_size - BORDER_SIZE["left"] - BORDER_SIZE["right"],
+                    v_exact_size - BORDER_SIZE["top"] - BORDER_SIZE["bottom"],
                     )
                 self.__overlay_tables(char_table, elem_char_table,
                     elem_h_pos, elem_v_pos)
         # TODO: trim the table
-        return char_table, h_real_pos, v_real_pos
+        return char_table, h_exact_pos, v_exact_pos
 
     @staticmethod
     def __calc(
         avail: int,
-        pivot: Pivot,
+        shift: float,
         move_to_fit: bool,
         resize_to_fit: bool,
         rel_size: float,
         abs_size: int,
         rel_pos: float,
         abs_pos: int,
-        ) -> int, int, int, int:
+        ) -> tuple[int, int, int, int]:
         """Calculate ...
 
         Returns ...
         """
+        exact_size = rel_size * avail + abs_size
+        exact_pos = int(rel_pos * avail + abs_pos - shift * exact_size)
+        exact_size = int(exact_size)
 
     @staticmethod
     def __overlay_tables(
-        table1: list[list[Charcell]],
-        table2: list[list[Charcell]],
+        table1: list[list[CharCell]],
+        table2: list[list[CharCell]],
         h_pos: int,
         v_pos: int,
-        ) -> None
+        ) -> None:
         """Overlay one CharCell table on another at specified coordinates.
 
         For every CharCell, its `overlay()` method is used.
