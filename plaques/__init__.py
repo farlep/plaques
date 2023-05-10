@@ -6,3 +6,4 @@ VERSION = __version__
 from .base import Color, Pivot, CharCell, Plaque
 globals().update(Color.__members__)
 globals().update(Pivot.__members__)
+from .render import print_plaque
