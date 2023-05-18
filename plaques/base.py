@@ -227,7 +227,10 @@ class Plaque:
         """Set provided attributes or the default ones."""
         kwargs = self.DEFAULTS | kwargs
         for _key, _value in kwargs.items():
-            self.__setattr__(_key, _value)
+            if isinstance(_value, Plaque):
+                self.__setattr__(_key, _value.copy())
+            else:
+                self.__setattr__(_key, _value)
         object.__setattr__(self, "content", [])
 
     def __setattr__(self, name: str, value) -> None:
@@ -291,6 +294,11 @@ class Plaque:
             [self.fill.copy() for _i in range(h_size)]
             for _j in range(v_size)
             ]
+
+    def copy(self) -> "Plaque":
+        """Make a copy of this plaque (without content)."""
+        _dict = {_: self.__dict__[_] for _ in self.DEFAULTS.keys()}
+        return Plaque(**_dict)
 
     @staticmethod
     def __calc(
